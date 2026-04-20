@@ -10,6 +10,7 @@ Actions находятся по пути: `.github/workflows/name.yml` в yml ф
 # Название Action
 name: Demo action
 # Событие/я на который реагирует Action
+# workflow_dispatch будет срабатывать только когда этот пайп в main ветке
 on: 
   push:
     branches: 
@@ -52,3 +53,46 @@ jobs:
 Также можно использовать secrets из нашего github settings, добавляется с помощью:   `${{ secrets.НАЗВАНИЕ }}`
 
 ---
+
+# GitHub Runner
+
+В pipelines можно использовать не только исполняющую машину от GitHub (Ubuntu, и тд.), можно разместить свой Runner самостоятельно на своём сервере.
+
+**Создать runner в GitHub**
+
+В: `Settings → Actions → Runners → New self-hosted runner` GitHub покажет точные команды с токеном регистрации для вашей ОС.
+
+**Запуск**
+
+Для запуска можно использовать команду `./run.sh` но при закрытии терминала - runner остановится. Для запуска runner как сервис надо использовать:
+
+```basic
+sudo ./svc.sh install    # создать systemd unit
+sudo ./svc.sh start      # запустить сервис
+# Дополнительные команды
+sudo ./svc.sh stop       # остановить
+sudo ./svc.sh status     # проверить состояние
+sudo ./svc.sh uninstall  # удалить сервис
+```
+
+**Использование**
+
+Далее можно использовать self-hosted runner в своём пайплайне.
+
+```yaml
+jobs:
+  build:
+    runs-on: self-hosted          # любой self-hosted runner
+    # или по labels:
+    runs-on: [self-hosted, linux, x64, production]
+```
+
+### Важные нюансы
+
+**Безопасность.** Не используйте self-hosted runners для публичных репозиториев — форкнутый PR может выполнить произвольный код на вашей машине. Для приватных репозиториев это нормально.
+
+**Ephemeral runners.** Для CI в контейнерах рекомендуется запускать runner с флагом `--ephemeral` — он автоматически снимается с регистрации после одной задачи, что безопаснее и чище.
+
+**Группы и labels.** Через `Settings → Actions → Runner groups` можно ограничить, каким репозиториям доступен runner. Labels позволяют точно адресовать нужную машину в `runs-on`.
+
+**Зависимости.** Runner сам не устанавливает Node.js, Docker и прочее — это должно уже быть на машине. Для унификации среды удобно использовать Docker-контейнеры внутри шагов через `container:` или action `docker/build-push-action`.
